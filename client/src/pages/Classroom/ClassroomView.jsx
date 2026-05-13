@@ -4,9 +4,10 @@ import 'react-calendar/dist/Calendar.css';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
-import { File, Link as LinkIcon, Upload, Plus, ChevronLeft, Tag, FileText, Globe, MessageSquare, Search } from 'lucide-react';
+import { File, Link as LinkIcon, Upload, Plus, ChevronLeft, Tag, FileText, Globe, MessageSquare, Search, BookOpen } from 'lucide-react';
 import ChatSidebar from '../../components/ChatSidebar';
 import SearchBar from '../../components/SearchBar';
+import SkeletonLoader from '../../components/SkeletonLoader';
 
 const ResourceCard = ({ res, isPinned }) => (
     <div className="glass-card animate-fade-in" style={{ padding: '20px', border: isPinned ? '1px solid var(--primary)' : '1px solid var(--glass-border)' }}>
@@ -111,28 +112,39 @@ const ClassroomView = () => {
         }
     };
 
-    if (!classroom) return <div style={{ padding: '40px' }}>Loading...</div>;
+    if (!classroom) return (
+        <div className="container">
+            <SkeletonLoader type="header" />
+            <div className="grid-cards">
+                <SkeletonLoader type="card" />
+                <SkeletonLoader type="card" />
+                <SkeletonLoader type="card" />
+            </div>
+        </div>
+    );
 
     return (
-        <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
+        <div className="container">
             <button onClick={() => navigate('/')} style={{ background: 'transparent', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '20px' }}>
                 <ChevronLeft size={18} /> Back to Dashboard
             </button>
 
-            <div className="glass-card" style={{ padding: '40px', marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                <div>
-                    <h1 style={{ fontSize: '2.5rem' }}>{classroom.name}</h1>
+            <div className="glass-card header-flex" style={{ padding: '30px' }}>
+                <div className="header-title">
+                    <h1>{classroom.name}</h1>
                     <p style={{ color: 'var(--text-muted)' }}>{classroom.subject} • {classroom.batch}</p>
                     <div style={{ marginTop: '15px', padding: '8px 15px', background: 'var(--surface)', borderRadius: '20px', display: 'inline-block', fontSize: '0.8rem' }}>
                         Invite Code: <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{classroom.inviteCode}</span>
                     </div>
                 </div>
-                <div style={{ flex: 1, marginLeft: '40px', maxWidth: '400px' }}>
-                    <SearchBar classroomId={id} />
+                <div className="header-actions">
+                    <div className="search-wrapper">
+                        <SearchBar classroomId={id} />
+                    </div>
+                    <button className="primary" onClick={() => activeTab === 'resources' ? setShowUpload(true) : setShowExamModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+                        {activeTab === 'resources' ? <><Upload size={18} /> Upload Resource</> : <><Plus size={18} /> Add Exam</>}
+                    </button>
                 </div>
-                <button className="primary" onClick={() => activeTab === 'resources' ? setShowUpload(true) : setShowExamModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {activeTab === 'resources' ? <><Upload size={18} /> Upload Resource</> : <><Plus size={18} /> Add Exam</>}
-                </button>
             </div>
 
             <div style={{ display: 'flex', gap: '30px', marginBottom: '30px', borderBottom: '1px solid var(--border)' }}>
@@ -178,7 +190,7 @@ const ClassroomView = () => {
             {selectedTag === 'All' && resources.some(r => r.isPinned) && (
                 <div style={{ marginBottom: '40px' }}>
                     <p style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 'bold', marginBottom: '15px' }}>PINNED BY FACULTY</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+                    <div className="grid-cards">
                         {resources.filter(r => r.isPinned).map(res => (
                             <ResourceCard key={res._id} res={res} isPinned />
                         ))}
@@ -186,15 +198,22 @@ const ClassroomView = () => {
                 </div>
             )}
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
-                        {resources.filter(r => (selectedTag === 'All' || r.tags.includes(selectedTag)) && !r.isPinned).length === 0 && <p style={{ color: 'var(--text-muted)' }}>No resources found.</p>}
-                        {resources.filter(r => (selectedTag === 'All' || r.tags.includes(selectedTag)) && !r.isPinned).map(res => (
-                            <ResourceCard key={res._id} res={res} />
-                        ))}
+                    <div className="grid-cards">
+                        {resources.filter(r => (selectedTag === 'All' || r.tags.includes(selectedTag)) && !r.isPinned).length === 0 ? (
+                            <div style={{ gridColumn: '1 / -1', padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                <BookOpen size={60} style={{ margin: '0 auto 20px', opacity: 0.5 }} />
+                                <h3>No resources found</h3>
+                                <p>Try adjusting your tag filters or upload a new resource.</p>
+                            </div>
+                        ) : (
+                            resources.filter(r => (selectedTag === 'All' || r.tags.includes(selectedTag)) && !r.isPinned).map(res => (
+                                <ResourceCard key={res._id} res={res} />
+                            ))
+                        )}
                     </div>
                 </>
             ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
+                <div className="classroom-layout">
                     <div className="glass-card" style={{ padding: '20px' }}>
                         <Calendar 
                             tileContent={({ date }) => {
@@ -246,8 +265,8 @@ const ClassroomView = () => {
             )}
 
             {showUpload && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }}>
-                    <div className="glass-card" style={{ padding: '40px', width: '450px' }}>
+                <div className="modal-overlay">
+                    <div className="glass-card modal-content">
                         <h2>Upload Resource</h2>
                         <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
                             <input placeholder="Resource Title" onChange={e => setUploadData({...uploadData, title: e.target.value})} required />
@@ -281,8 +300,8 @@ const ClassroomView = () => {
             )}
 
             {showExamModal && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }}>
-                    <div className="glass-card" style={{ padding: '40px', width: '450px' }}>
+                <div className="modal-overlay">
+                    <div className="glass-card modal-content">
                         <h2>Schedule Exam</h2>
                         <form onSubmit={handleExamSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
                             <input placeholder="Exam Title" onChange={e => setExamData({...examData, title: e.target.value})} required />

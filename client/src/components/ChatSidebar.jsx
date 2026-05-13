@@ -42,17 +42,43 @@ const ChatSidebar = ({ classroomId, isOpen, onClose }) => {
         if (!input.trim()) return;
 
         const messageData = {
+            _id: 'temp-' + Date.now(), // Temporary ID for optimistic UI
             classroomId,
             sender: user.id,
             senderName: user.name,
             content: input,
-            timestamp: new Date()
+            timestamp: new Date(),
+            status: 'sending' // Optimistic flag
         };
 
-        socketRef.current.emit('send-message', messageData);
+        // Optimistically update UI
+        setMessages((prev) => [...prev, messageData]);
         setInput('');
+
+        socketRef.current.emit('send-message', messageData);
         socketRef.current.emit('typing', { classroomId, userName: user.name, isTyping: false });
     };
+
+    // Listen for the confirmed message from server
+    useEffect(() => {
+        const handleReceive = (message) => {
+            setMessages((prev) => {
+                // If it's a confirmation of our own message, update the status and ID
+                const tempIndex = prev.findIndex(m => m.content === message.content && m.status === 'sending' && m.sender === message.sender);
+                if (tempIndex !== -1) {
+                    const newMessages = [...prev];
+                    newMessages[tempIndex] = { ...message, status: 'sent' };
+                    return newMessages;
+                }
+                return [...prev, message];
+            });
+        };
+
+        if (socketRef.current) {
+            socketRef.current.off('receive-message'); // prevent duplicate listeners
+            socketRef.current.on('receive-message', handleReceive);
+        }
+    }, [messages]);
 
     const handleTyping = (e) => {
         setInput(e.target.value);
@@ -66,17 +92,7 @@ const ChatSidebar = ({ classroomId, isOpen, onClose }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="glass-card animate-fade-in" style={{ 
-            position: 'fixed', 
-            right: '20px', 
-            bottom: '20px', 
-            top: '100px', 
-            width: '350px', 
-            display: 'flex', 
-            flexDirection: 'column',
-            zIndex: 50,
-            overflow: 'hidden'
-        }}>
+        <div className="glass-card animate-fade-in chat-sidebar-container">
             <div style={{ padding: '20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <MessageSquare size={20} color="var(--primary)" />
@@ -100,7 +116,9 @@ const ChatSidebar = ({ classroomId, isOpen, onClose }) => {
                             borderRadius: '12px', 
                             background: msg.sender === user.id ? 'var(--primary)' : 'var(--surface)',
                             color: 'white',
-                            fontSize: '0.9rem'
+                            fontSize: '0.9rem',
+                            opacity: msg.status === 'sending' ? 0.7 : 1,
+                            transition: 'opacity 0.2s'
                         }}>
                             {msg.content}
                         </div>

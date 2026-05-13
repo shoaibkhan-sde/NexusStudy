@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Plus, UserPlus, LogOut, BookOpen, Users, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import SearchBar from '../components/SearchBar';
+import SkeletonLoader from '../components/SkeletonLoader';
 
 const Dashboard = () => {
     const [classrooms, setClassrooms] = useState([]);
@@ -14,18 +15,23 @@ const Dashboard = () => {
     const { token, logout, user } = useAuth();
     const navigate = useNavigate();
 
+    const [loading, setLoading] = useState(true);
+
     useEffect(() => {
         fetchClassrooms();
     }, []);
 
     const fetchClassrooms = async () => {
         try {
+            setLoading(true);
             const res = await axios.get('http://localhost:5000/api/classroom/my-classrooms', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setClassrooms(res.data);
         } catch (err) {
             console.error(err);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -56,21 +62,23 @@ const Dashboard = () => {
     };
 
     return (
-        <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
+        <div className="container">
+            <div className="header-flex">
                 <div>
                     <h1 style={{ fontSize: '2.5rem' }}>Nexus<span style={{ color: 'var(--primary)' }}>Study</span></h1>
                     <p style={{ color: 'var(--text-muted)' }}>Welcome back, {user?.name || 'Explorer'}</p>
                 </div>
-                <div style={{ flex: 1, marginLeft: '40px', maxWidth: '400px' }}>
-                    <SearchBar />
+                <div className="header-actions">
+                    <div className="search-wrapper">
+                        <SearchBar />
+                    </div>
+                    <button onClick={logout} style={{ background: 'transparent', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+                        <LogOut size={18} /> Logout
+                    </button>
                 </div>
-                <button onClick={logout} style={{ background: 'transparent', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <LogOut size={18} /> Logout
-                </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+            <div className="grid-cards">
                 <div 
                     className="glass-card" 
                     style={{ padding: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', cursor: 'pointer' }}
@@ -89,26 +97,40 @@ const Dashboard = () => {
                     <p style={{ marginTop: '10px', fontWeight: '600' }}>Join with Code</p>
                 </div>
 
-                {classrooms.map(cls => (
-                    <div 
-                        key={cls._id} 
-                        className="glass-card animate-fade-in" 
-                        style={{ padding: '25px', cursor: 'pointer' }}
-                        onClick={() => navigate(`/classroom/${cls._id}`)}
-                    >
-                        <h3 style={{ fontSize: '1.2rem', marginBottom: '5px' }}>{cls.name}</h3>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '15px' }}>{cls.subject} • {cls.batch}</p>
-                        <div style={{ display: 'flex', gap: '15px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><Users size={14} /> {cls.members.length} members</span>
-                        </div>
+                {loading ? (
+                    <>
+                        <SkeletonLoader type="card" />
+                        <SkeletonLoader type="card" />
+                        <SkeletonLoader type="card" />
+                    </>
+                ) : classrooms.length === 0 ? (
+                    <div style={{ gridColumn: '1 / -1', padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        <BookOpen size={60} style={{ margin: '0 auto 20px', opacity: 0.5 }} />
+                        <h3 style={{ marginBottom: '10px', color: 'var(--text)' }}>No classrooms yet</h3>
+                        <p>Create a new classroom or join an existing one to get started.</p>
                     </div>
-                ))}
+                ) : (
+                    classrooms.map(cls => (
+                        <div 
+                            key={cls._id} 
+                            className="glass-card animate-fade-in" 
+                            style={{ padding: '25px', cursor: 'pointer' }}
+                            onClick={() => navigate(`/classroom/${cls._id}`)}
+                        >
+                            <h3 style={{ fontSize: '1.2rem', marginBottom: '5px' }}>{cls.name}</h3>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '15px' }}>{cls.subject} • {cls.batch}</p>
+                            <div style={{ display: 'flex', gap: '15px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><Users size={14} /> {cls.members.length} members</span>
+                            </div>
+                        </div>
+                    ))
+                )}
             </div>
 
             {/* Modals */}
             {showCreate && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }}>
-                    <div className="glass-card" style={{ padding: '40px', width: '400px' }}>
+                <div className="modal-overlay">
+                    <div className="glass-card modal-content">
                         <h2>Create New Classroom</h2>
                         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
                             <input placeholder="Classroom Name" onChange={e => setNewClass({...newClass, name: e.target.value})} required />
@@ -124,8 +146,8 @@ const Dashboard = () => {
             )}
 
             {showJoin && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }}>
-                    <div className="glass-card" style={{ padding: '40px', width: '400px' }}>
+                <div className="modal-overlay">
+                    <div className="glass-card modal-content">
                         <h2>Join Classroom</h2>
                         <form onSubmit={handleJoin} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
                             <input placeholder="Enter Invite Code" onChange={e => setInviteCode(e.target.value.toUpperCase())} required />

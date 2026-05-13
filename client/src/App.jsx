@@ -5,6 +5,7 @@ import Login from './pages/Auth/Login';
 import Signup from './pages/Auth/Signup';
 import Dashboard from './pages/Dashboard';
 import ClassroomView from './pages/Classroom/ClassroomView';
+import CommandPalette from './components/CommandPalette';
 
 const ProtectedRoute = ({ children }) => {
     const { token } = useAuth();
@@ -16,6 +17,7 @@ function App() {
   return (
     <AuthProvider>
         <Router>
+            <CommandPalette />
             <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />

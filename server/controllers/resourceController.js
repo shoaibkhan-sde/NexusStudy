@@ -1,4 +1,5 @@
 const Resource = require('../models/Resource');
+// const { pdfQueue } = require('../workers/pdfWorker'); // DISABLED UNTIL REDIS IS RUNNING
 
 exports.uploadResource = async (req, res) => {
     try {
@@ -29,6 +30,19 @@ exports.uploadResource = async (req, res) => {
 
         const savedResource = await newResource.save();
         console.log("Resource saved successfully:", savedResource._id);
+
+        // Dispatch background job for AI processing (DISABLED UNTIL REDIS IS RUNNING)
+        /*
+        if (savedResource.type === 'pdf' || (req.file && req.file.path.endsWith('.pdf'))) {
+            await pdfQueue.add('extract-text', {
+                resourceId: savedResource._id,
+                fileUrl: savedResource.fileUrl,
+                title: savedResource.title
+            });
+            console.log(`[Queue] Dispatched AI job for resource ${savedResource._id}`);
+        }
+        */
+
         res.json(savedResource);
     } catch (err) {
         console.error("FULL UPLOAD ERROR:", err); // This will show the actual error in terminal
